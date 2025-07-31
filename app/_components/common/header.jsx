@@ -7,7 +7,7 @@ import { Menu, Transition } from "@headlessui/react";
 import { FiUser, FiShoppingCart, FiMenu, FiX } from "react-icons/fi";
 import { HiOutlineGlobeAlt } from "react-icons/hi2";
 
-export default function Header() {
+const Header = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const navLinks = [
@@ -201,7 +201,7 @@ export default function Header() {
       </Transition>
     </header>
   );
-}
+};
 
 const dropdownItem = (active) =>
   `block px-4 py-2 text-sm ${active ? "bg-gray-100" : ""}`;
@@ -214,3 +214,5 @@ const transitionProps = {
   leaveFrom: "opacity-100 translate-y-0",
   leaveTo: "opacity-0 translate-y-1",
 };
+
+export default Header;
