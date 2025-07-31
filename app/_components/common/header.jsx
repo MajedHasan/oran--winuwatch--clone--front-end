@@ -7,7 +7,7 @@ import { Menu, Transition } from "@headlessui/react";
 import { FiUser, FiShoppingCart, FiMenu, FiX } from "react-icons/fi";
 import { HiOutlineGlobeAlt } from "react-icons/hi2";
 
-export default function PremiumHeader() {
+export default function Header() {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const navLinks = [
