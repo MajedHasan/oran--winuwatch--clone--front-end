@@ -13,8 +13,6 @@ export default function LuxuryWatchTicketCard({
   ticketPrice = "$20",
   countdownEnd = Date.now() + 6 * 60 * 60 * 1000, // 6 hours from now
 }) {
-  const [countdownEndTime] = useState(() => Date.now() + 6 * 60 * 60 * 1000); // fix here
-
   const [timeLeft, setTimeLeft] = useState(getTimeLeft(countdownEnd));
   const cardRef = useRef();
 

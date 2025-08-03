@@ -11,10 +11,12 @@ const Header = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const navLinks = [
-    { href: "/", label: "Home" },
-    { href: "/shop", label: "Shop" },
-    { href: "/about", label: "About" },
-    { href: "/contact", label: "Contact" },
+    { href: "/howtoplay", label: "How to play" },
+    { href: "/winners", label: "Winners" },
+    { href: "/feed", label: "Feed" },
+    { href: "/faq", label: "Faq" },
+    { href: "/about-us", label: "About Us" },
+    { href: "/contact-us", label: "Contact Us" },
   ];
 
   const cartItems = [
@@ -96,14 +98,17 @@ const Header = () => {
                 </Menu.Item>
                 <Menu.Item>
                   {({ active }) => (
-                    <Link href="/login" className={dropdownItem(active)}>
+                    <Link href="/auth/login" className={dropdownItem(active)}>
                       Login
                     </Link>
                   )}
                 </Menu.Item>
                 <Menu.Item>
                   {({ active }) => (
-                    <Link href="/register" className={dropdownItem(active)}>
+                    <Link
+                      href="/auth/registration"
+                      className={dropdownItem(active)}
+                    >
                       Register
                     </Link>
                   )}

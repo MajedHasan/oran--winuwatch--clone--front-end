@@ -1,15 +1,19 @@
 import React from "react";
-import Header from "@/app/_components/common/header";
+import "keen-slider/keen-slider.min.css";
 
-const layout = ({ children }) => {
+import Header from "@/app/_components/common/header";
+import Footer from "../_components/common/footer";
+
+const Layout = ({ children }) => {
   return (
     <>
       <main>
         <Header />
         {children}
+        <Footer />
       </main>
     </>
   );
 };
 
-export default layout;
+export default Layout;
