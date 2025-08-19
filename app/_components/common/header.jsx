@@ -24,14 +24,14 @@ const Header = () => {
       id: 1,
       name: "Luxury Watch",
       price: "$999",
-      image: "/watch.jpg",
+      image: "/images/watch1.webp",
       quantity: 1,
     },
     {
       id: 2,
       name: "Silk Shirt",
       price: "$249",
-      image: "/shirt.jpg",
+      image: "/images/watch2.webp",
       quantity: 1,
     },
   ];
@@ -91,7 +91,7 @@ const Header = () => {
               <Menu.Items className="absolute right-0 mt-2 w-48 bg-white text-black rounded-lg shadow-lg ring-1 ring-black ring-opacity-5 z-20">
                 <Menu.Item>
                   {({ active }) => (
-                    <Link href="/profile" className={dropdownItem(active)}>
+                    <Link href="/users" className={dropdownItem(active)}>
                       My Profile
                     </Link>
                   )}
