@@ -13,24 +13,39 @@ import {
   FiBell,
   FiChevronLeft,
   FiChevronRight,
+  FiLogOut,
+  FiHelpCircle,
+  FiMail,
+  FiAward,
 } from "react-icons/fi";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 const sidebarItems = [
   { label: "Dashboard", icon: <FiHome />, href: "/dashboard" },
   { label: "Users", icon: <FiUsers />, href: "/dashboard/users" },
   { label: "Competitions", icon: <FiList />, href: "/dashboard/competitions" },
-  { label: "Biddings", icon: <FiFileText />, href: "/dashboard/biddings" },
+  { label: "Biddings", icon: <FiClock />, href: "/dashboard/biddings" }, // clock fits bidding timelines
   {
     label: "Transactions",
     icon: <FiDollarSign />,
     href: "/dashboard/transactions",
   },
+  { label: "Faq", icon: <FiHelpCircle />, href: "/dashboard/faq" }, // better than settings
+  { label: "Contact", icon: <FiMail />, href: "/dashboard/contact" }, // mail for messages
+  { label: "Winners", icon: <FiAward />, href: "/dashboard/winner" }, // award fits winners
   { label: "Settings", icon: <FiSettings />, href: "/dashboard/settings" },
 ];
 
 export default function DashboardLayout({ children }) {
   const [collapsed, setCollapsed] = useState(false);
+  const router = useRouter();
+
+  const handleLogout = () => {
+    // Clear auth token from localStorage or cookies
+    localStorage.removeItem("token"); // or your auth key
+    router.push("/auth/login"); // redirect to login
+  };
 
   return (
     <div className="flex h-screen bg-gray-900 text-white overflow-hidden">
@@ -86,6 +101,7 @@ export default function DashboardLayout({ children }) {
                 3
               </span>
             </button>
+
             <div className="flex items-center gap-2 cursor-pointer">
               <img
                 src="https://i.pravatar.cc/40?img=12"
@@ -94,6 +110,15 @@ export default function DashboardLayout({ children }) {
               />
               <span className="hidden md:block">Super Admin</span>
             </div>
+
+            {/* Logout Button */}
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-1 px-3 py-2 bg-red-600 hover:bg-red-700 rounded-md text-white"
+            >
+              <FiLogOut />
+              <span className="hidden md:block">Logout</span>
+            </button>
           </div>
         </header>
 

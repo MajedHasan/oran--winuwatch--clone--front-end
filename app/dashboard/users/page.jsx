@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect, Fragment } from "react";
 import {
   FiUser,
   FiCreditCard,
@@ -16,7 +16,6 @@ import {
   FiChevronDown,
 } from "react-icons/fi";
 import { Dialog, Transition } from "@headlessui/react";
-import { Fragment } from "react";
 import { Line } from "react-chartjs-2";
 import {
   Chart as ChartJS,
@@ -28,6 +27,7 @@ import {
   Tooltip,
   Legend,
 } from "chart.js";
+import api from "@/lib/axios";
 
 ChartJS.register(
   CategoryScale,
@@ -39,28 +39,33 @@ ChartJS.register(
   Legend
 );
 
-const mockUsers = Array.from({ length: 42 }, (_, i) => ({
-  id: i + 1,
-  name: `User ${i + 1}`,
-  email: `user${i + 1}@example.com`,
-  role: i % 3 === 0 ? "Admin" : "Collector",
-  status: i % 5 === 0 ? "Banned" : "Active",
-  wallet: (Math.random() * 1200).toFixed(2),
-  biddings: Math.floor(Math.random() * 20),
-  dailyActivity: Array.from({ length: 7 }, () =>
-    Math.floor(Math.random() * 10)
-  ),
-}));
-
 export default function UsersPage() {
-  const [users, setUsers] = useState(mockUsers);
+  const [users, setUsers] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedUser, setSelectedUser] = useState(null);
   const [modalType, setModalType] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [sortConfig, setSortConfig] = useState({ key: null, direction: null });
+  const [loading, setLoading] = useState(true);
 
   const usersPerPage = 10;
+
+  const token = localStorage.getItem("token");
+  const headers = token ? { Authorization: `Bearer ${token}` } : {};
+
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const res = await api.get("/users", { headers });
+        setUsers(res.data.items);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchUsers();
+  }, []);
 
   const filteredUsers = useMemo(() => {
     let filtered = users.filter(
@@ -98,21 +103,29 @@ export default function UsersPage() {
     setModalType(null);
   };
 
-  const toggleBan = (id) => {
-    setUsers((prev) =>
-      prev.map((u) =>
-        u.id === id
-          ? { ...u, status: u.status === "Banned" ? "Active" : "Banned" }
-          : u
-      )
-    );
+  const toggleBan = async (id) => {
+    try {
+      const res = await api.patch(`/users/${id}/status`, {}, { headers });
+      setUsers((prev) =>
+        prev.map((u) => (u.id === id ? { ...u, status: res.data.status } : u))
+      );
+    } catch (err) {
+      console.error(err);
+    }
   };
 
-  const handleSaveEdit = () => {
-    setUsers((prev) =>
-      prev.map((u) => (u.id === selectedUser.id ? selectedUser : u))
-    );
-    closeModal();
+  const handleSaveEdit = async () => {
+    try {
+      const res = await api.put(`/users/${selectedUser.id}`, selectedUser, {
+        headers,
+      });
+      setUsers((prev) =>
+        prev.map((u) => (u.id === selectedUser.id ? res.data.user : u))
+      );
+      closeModal();
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   const requestSort = (key) => {
@@ -121,6 +134,8 @@ export default function UsersPage() {
       direction = "desc";
     setSortConfig({ key, direction });
   };
+
+  if (loading) return <div className="p-6 text-white">Loading users...</div>;
 
   return (
     <div className="p-6 md:p-10 min-h-screen bg-[#121212] text-white space-y-8">
@@ -152,7 +167,9 @@ export default function UsersPage() {
           </div>
           <div className="mt-3 text-2xl font-bold">
             £
-            {users.reduce((sum, u) => sum + parseFloat(u.wallet), 0).toFixed(2)}
+            {users
+              .reduce((sum, u) => sum + parseFloat(u.wallet || 0), 0)
+              .toFixed(2)}
           </div>
         </div>
         <div className="bg-[#1f1f1f] rounded-2xl p-5 shadow hover:shadow-lg transition">
@@ -161,7 +178,7 @@ export default function UsersPage() {
             <div>Active Users</div>
           </div>
           <div className="mt-3 text-2xl font-bold">
-            {users.filter((u) => u.status === "Active").length}
+            {users.filter((u) => u.status === "active").length}
           </div>
         </div>
         <div className="bg-[#1f1f1f] rounded-2xl p-5 shadow hover:shadow-lg transition">
@@ -170,7 +187,7 @@ export default function UsersPage() {
             <div>Biddings Placed</div>
           </div>
           <div className="mt-3 text-2xl font-bold">
-            {users.reduce((sum, u) => sum + u.biddings, 0)}
+            {users.reduce((sum, u) => sum + (u.biddings || 0), 0)}
           </div>
         </div>
       </div>
@@ -220,7 +237,7 @@ export default function UsersPage() {
                   <td className="px-6 py-3">
                     <span
                       className={`inline-block px-2 py-1 rounded-full text-xs font-semibold ${
-                        user.status === "Active"
+                        user.status === "active"
                           ? "bg-emerald-500/20 text-emerald-300"
                           : "bg-rose-500/20 text-rose-300"
                       }`}
@@ -389,8 +406,8 @@ export default function UsersPage() {
                           })
                         }
                       >
-                        <option value="Collector">Collector</option>
-                        <option value="Admin">Admin</option>
+                        <option value="user">User</option>
+                        <option value="admin">Admin</option>
                       </select>
                       <div className="flex justify-end gap-2 mt-3">
                         <button
@@ -453,6 +470,7 @@ export default function UsersPage() {
           </div>
         </Dialog>
       </Transition>
+      {/* Only change the `toggleBan` and `handleSaveEdit` to call the backend via `api` */}
     </div>
   );
 }

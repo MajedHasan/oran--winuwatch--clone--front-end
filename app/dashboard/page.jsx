@@ -1,6 +1,7 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
+import api from "@/lib/axios"; // your axios instance
 import {
   FiUsers,
   FiDollarSign,
@@ -38,21 +39,68 @@ ChartJS.register(
 );
 
 export default function DashboardPage() {
+  const [users, setUsers] = useState(0);
+  const [activeCompetitions, setActiveCompetitions] = useState(0);
+  const [totalBiddings, setTotalBiddings] = useState(0);
+  const [newUsers, setNewUsers] = useState(0);
+  const [competitionsEnded, setCompetitionsEnded] = useState(0);
+  const [recentActivities, setRecentActivities] = useState([]);
+  const [topUsers, setTopUsers] = useState([]);
+  const [topCompetitions, setTopCompetitions] = useState([]);
+  const [chartData, setChartData] = useState({
+    dailyUsers: [],
+    revenueTrend: [],
+    competitionActivity: [],
+    dailyLabels: [],
+  });
+
+  useEffect(() => {
+    async function fetchDashboardData() {
+      try {
+        const token = localStorage.getItem("token");
+        const headers = token ? { Authorization: `Bearer ${token}` } : {};
+
+        const res = await api.get("dashboard/stats", { headers });
+        const data = res.data;
+
+        setUsers(data.totalUsers);
+        setActiveCompetitions(data.activeCompetitions);
+        setTotalBiddings(data.totalBiddings);
+        setNewUsers(data.newUsersToday);
+        setCompetitionsEnded(data.competitionsEnded);
+        setRecentActivities(data.recentActivities || []);
+        setTopUsers(data.topUsers || []);
+        setTopCompetitions(data.topCompetitions || []);
+
+        setChartData({
+          dailyUsers: data.chartData.dailyUsers,
+          revenueTrend: data.chartData.revenueTrend,
+          competitionActivity: data.chartData.competitionActivity,
+          dailyLabels: data.chartData.last7Days,
+        });
+      } catch (err) {
+        console.error("Failed to fetch dashboard data", err);
+      }
+    }
+
+    fetchDashboardData();
+  }, []);
+
   // KPI Cards
   const kpis = [
     {
       label: "Total Users",
-      value: 1240,
+      value: users,
       icon: <FiUsers className="text-yellow-400" />,
     },
     {
       label: "Active Competitions",
-      value: 28,
+      value: activeCompetitions,
       icon: <FiAward className="text-yellow-400" />,
     },
     {
       label: "Total Biddings",
-      value: 512,
+      value: totalBiddings,
       icon: <FiShoppingCart className="text-yellow-400" />,
     },
     {
@@ -67,28 +115,28 @@ export default function DashboardPage() {
     },
     {
       label: "New Users Today",
-      value: 34,
+      value: newUsers,
       icon: <FiUsers className="text-yellow-400" />,
     },
     {
       label: "Competitions Ended",
-      value: 12,
+      value: competitionsEnded,
       icon: <FiAward className="text-yellow-400" />,
     },
     {
       label: "Active Users Online",
-      value: 56,
+      value: 0,
       icon: <FiTrendingUp className="text-yellow-400" />,
     },
   ];
 
   // Charts
   const dailyUsers = {
-    labels: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+    labels: chartData.dailyLabels,
     datasets: [
       {
         label: "New Users",
-        data: [50, 75, 60, 90, 100, 120, 80],
+        data: chartData.dailyUsers,
         borderColor: "#facc15",
         backgroundColor: "rgba(250,204,21,0.2)",
         tension: 0.3,
@@ -98,22 +146,22 @@ export default function DashboardPage() {
   };
 
   const revenueTrend = {
-    labels: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+    labels: chartData.dailyLabels,
     datasets: [
       {
         label: "Revenue",
-        data: [4200, 3800, 5100, 6000, 4800, 7200, 6500],
+        data: chartData.revenueTrend,
         backgroundColor: "#f59e0b",
       },
     ],
   };
 
   const competitionActivity = {
-    labels: ["Rolex", "Patek", "Audemars", "Omega", "Tag Heuer"],
+    labels: topCompetitions.map((c) => c.name),
     datasets: [
       {
         label: "Active Biddings",
-        data: [34, 20, 15, 25, 18],
+        data: chartData.competitionActivity,
         backgroundColor: [
           "#facc15",
           "#f59e0b",
@@ -125,51 +173,6 @@ export default function DashboardPage() {
     ],
   };
 
-  // Recent activities
-  const recentActivities = [
-    {
-      type: "Bid",
-      user: "John Doe",
-      competition: "Rolex Submariner",
-      amount: "£75",
-      date: "12 Aug 2025",
-    },
-    {
-      type: "Deposit",
-      user: "Jane Smith",
-      competition: "-",
-      amount: "£150",
-      date: "11 Aug 2025",
-    },
-    {
-      type: "Withdrawal",
-      user: "Bob Johnson",
-      competition: "-",
-      amount: "£200",
-      date: "10 Aug 2025",
-    },
-    {
-      type: "Bid",
-      user: "Alice Brown",
-      competition: "Patek Philippe Nautilus",
-      amount: "£120",
-      date: "10 Aug 2025",
-    },
-  ];
-
-  // Top Users / Competitions
-  const topUsers = [
-    { name: "John Doe", biddings: 12, winnings: "£1,500" },
-    { name: "Alice Brown", biddings: 9, winnings: "£950" },
-    { name: "Bob Johnson", biddings: 7, winnings: "£700" },
-  ];
-
-  const topCompetitions = [
-    { name: "Rolex Submariner", entries: 120, revenue: "£3,000" },
-    { name: "Patek Philippe Nautilus", entries: 95, revenue: "£2,375" },
-    { name: "Audemars Piguet Royal Oak", entries: 70, revenue: "£1,750" },
-  ];
-
   return (
     <div className="space-y-8">
       {/* Quick Notification & Messages */}
@@ -177,7 +180,7 @@ export default function DashboardPage() {
         <div className="flex items-center gap-3">
           <FiBell className="text-yellow-400 text-xl" />
           <span className="text-white/70 text-sm">
-            You have 5 new notifications
+            You have {recentActivities.length} new notifications
           </span>
         </div>
         <div className="flex items-center gap-3">

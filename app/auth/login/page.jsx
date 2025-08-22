@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
+import api from "@/lib/axios";
 
 export default function LoginPage() {
   const [focusedInput, setFocusedInput] = useState(null);
@@ -9,9 +11,44 @@ export default function LoginPage() {
     emailOrUsername: "",
     password: "",
   });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const router = useRouter();
 
   const handleChange = (e) => {
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
+
+    try {
+      const res = await api.post("/auth/login", {
+        email: formData.emailOrUsername,
+        password: formData.password,
+      });
+      const { user, token } = res.data;
+
+      localStorage.setItem("token", token);
+      localStorage.setItem("user", JSON.stringify(user));
+
+      if (user.role === "admin") {
+        router.push("/dashboard");
+      } else {
+        router.push("/users");
+      }
+    } catch (err) {
+      // Handle backend error properly
+      if (err.response && err.response.data && err.response.data.message) {
+        setError(err.response.data.message); // message from backend
+      } else {
+        setError("Something went wrong. Please try again.");
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -20,14 +57,7 @@ export default function LoginPage() {
         <h1 className="text-4xl font-extrabold text-[#d4af37] mb-10 text-center drop-shadow-lg">
           Login to Your Account
         </h1>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            alert(`Logging in as: ${formData.emailOrUsername}`);
-          }}
-          noValidate
-          className="animate-fadeIn"
-        >
+        <form onSubmit={handleSubmit} noValidate className="animate-fadeIn">
           <FloatingInput
             label="Email or Username"
             name="emailOrUsername"
@@ -49,11 +79,22 @@ export default function LoginPage() {
             type="password"
           />
 
+          {error && (
+            <p className="mt-2 text-red-500 text-sm font-medium text-center">
+              {error}
+            </p>
+          )}
+
           <button
             type="submit"
-            className="w-full mt-8 py-3 rounded-full bg-gradient-to-r from-[#d4af37] to-yellow-400 text-black font-extrabold text-lg shadow-lg hover:scale-105 hover:shadow-2xl transition-transform duration-300"
+            disabled={loading}
+            className={`w-full mt-8 py-3 rounded-full bg-gradient-to-r from-[#d4af37] to-yellow-400 text-black font-extrabold text-lg shadow-lg transition-transform duration-300 ${
+              loading
+                ? "opacity-60 cursor-not-allowed"
+                : "hover:scale-105 hover:shadow-2xl"
+            }`}
           >
-            Login
+            {loading ? "Logging in..." : "Login"}
           </button>
 
           <p className="mt-6 text-center text-gray-400 text-sm">

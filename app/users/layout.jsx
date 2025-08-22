@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   FiMenu,
   FiX,
@@ -19,28 +19,40 @@ import {
 const nav = [
   { href: "/users", label: "Overview", icon: <FiGrid /> },
   { href: "/users/profile", label: "Profile", icon: <FiUser /> },
-  {
-    href: "/users/bidding",
-    label: "My Biddings",
-    icon: <FiTrendingUp />,
-  },
-  {
-    href: "/users/my-biddings",
-    label: "My Biddings",
-    icon: <FiTrendingUp />,
-  },
+  { href: "/users/bidding", label: "My Biddings", icon: <FiTrendingUp /> },
+  { href: "/users/my-biddings", label: "My Biddings", icon: <FiTrendingUp /> },
   { href: "/users/wallet", label: "Wallet", icon: <FiCreditCard /> },
   { href: "/users/settings", label: "Settings", icon: <FiSettings /> },
 ];
 
 export default function DashboardLayout({ children }) {
   const pathname = usePathname();
+  const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [user, setUser] = useState(null);
+
+  // Check login on mount
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    const userData = localStorage.getItem("user");
+    if (!token || !userData) {
+      router.push("/auth/login");
+    } else {
+      setUser(JSON.parse(userData));
+    }
+  }, [router]);
 
   const title = useMemo(() => {
     const match = nav.find((n) => pathname === n.href);
     return match?.label ?? "Overview";
   }, [pathname]);
+
+  // Logout function
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    router.push("/auth/login");
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#0d0d0f] via-[#0e0e10] to-[#0b0b0d] text-white">
@@ -69,13 +81,13 @@ export default function DashboardLayout({ children }) {
             <button className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-white/5 hover:bg-white/10 transition">
               <FiShield />
             </button>
-            <Link
-              href="/auth/login"
+            <button
+              onClick={handleLogout}
               className="inline-flex h-10 items-center gap-2 rounded-xl bg-gradient-to-r from-yellow-400 to-amber-500 px-4 font-semibold text-black shadow-lg hover:brightness-110"
             >
               <FiLogOut />
               <span className="hidden sm:inline">Logout</span>
-            </Link>
+            </button>
           </div>
         </div>
       </header>
@@ -115,29 +127,6 @@ export default function DashboardLayout({ children }) {
                 </Link>
               );
             })}
-
-            <div className="mt-6 rounded-2xl border border-white/10 bg-gradient-to-br from-white/5 to-white/0 p-4">
-              <h4 className="text-sm font-semibold mb-2 text-white/90">
-                Your Tier
-              </h4>
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-yellow-400 to-amber-600 shadow-yellow-500/20 shadow" />
-                <div>
-                  <p className="text-sm font-semibold">Gold Member</p>
-                  <p className="text-xs text-white/60">
-                    2.0× reward multiplier
-                  </p>
-                </div>
-              </div>
-              <div className="mt-4">
-                <div className="h-2 w-full rounded-full bg-white/10 overflow-hidden">
-                  <div className="h-full w-2/3 bg-gradient-to-r from-yellow-400 to-amber-500" />
-                </div>
-                <p className="mt-2 text-xs text-white/60">
-                  Next tier in 1,200 pts
-                </p>
-              </div>
-            </div>
           </nav>
         </aside>
 

@@ -1,70 +1,8 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { FiChevronDown, FiChevronUp, FiSearch, FiInfo } from "react-icons/fi";
-
-const faqData = [
-  {
-    category: "Competition",
-    faqs: [
-      {
-        question: "How do I enter the competition?",
-        answer:
-          "Simply register on our website, select the number of tickets you want to buy, and complete the payment process. Each ticket increases your chances to win!",
-      },
-      {
-        question: "Can I enter multiple competitions simultaneously?",
-        answer:
-          "Yes, you can participate in multiple competitions as long as you purchase tickets for each one separately.",
-      },
-      {
-        question: "Is the competition fair and transparent?",
-        answer:
-          "Absolutely! We use third-party verified random number generators to ensure impartiality and fairness.",
-      },
-    ],
-  },
-  {
-    category: "Payments",
-    faqs: [
-      {
-        question: "What payment methods do you accept?",
-        answer:
-          "We accept all major credit/debit cards, PayPal, and other secure payment options.",
-      },
-      {
-        question: "Is my payment information safe?",
-        answer:
-          "Yes, payments are processed securely via our trusted partners, and no payment details are stored on our servers.",
-      },
-      {
-        question: "Can I get a refund if I change my mind?",
-        answer:
-          "Due to the nature of competitions, all ticket purchases are final and non-refundable.",
-      },
-    ],
-  },
-  {
-    category: "Watches & Prizes",
-    faqs: [
-      {
-        question: "Are the watches brand new?",
-        answer:
-          "Yes, all watches awarded through our competitions are brand new and authentic.",
-      },
-      {
-        question: "What happens if the winner cannot be contacted?",
-        answer:
-          "We will make multiple attempts to contact the winner. If unreachable, the prize may be redrawn according to competition rules.",
-      },
-      {
-        question: "Do you ship internationally?",
-        answer:
-          "Yes, we ship watches worldwide, with appropriate customs and duties applied as needed.",
-      },
-    ],
-  },
-];
+import api from "@/lib/axios";
 
 function AccordionItem({ question, answer, isOpen, onClick }) {
   return (
@@ -91,9 +29,43 @@ function AccordionItem({ question, answer, isOpen, onClick }) {
 }
 
 export default function FAQPage() {
+  const [faqs, setFaqs] = useState([]);
   const [openIndices, setOpenIndices] = useState({});
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  const token =
+    typeof window !== "undefined" ? localStorage.getItem("token") : null;
+  const headers = token ? { Authorization: `Bearer ${token}` } : {};
+
+  useEffect(() => {
+    const fetchFAQs = async () => {
+      setLoading(true);
+      try {
+        const { data } = await api.get("/faqs", { headers });
+        // Group FAQs by category
+        const grouped = data.reduce((acc, faq) => {
+          const cat = faq.category || "Other";
+          if (!acc[cat]) acc[cat] = [];
+          acc[cat].push(faq);
+          return acc;
+        }, {});
+        const formatted = Object.keys(grouped).map((cat) => ({
+          category: cat,
+          faqs: grouped[cat],
+        }));
+        setFaqs(formatted);
+      } catch (error) {
+        console.error(error.response?.data || error.message);
+        alert(error.response?.data?.message || "Failed to fetch FAQs");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchFAQs();
+  }, []);
 
   const toggleItem = (catIdx, faqIdx) => {
     setOpenIndices((prev) => {
@@ -106,7 +78,7 @@ export default function FAQPage() {
   };
 
   const filteredFaqData = useMemo(() => {
-    return faqData
+    return faqs
       .filter((category, idx) =>
         selectedCategory !== null ? idx === selectedCategory : true
       )
@@ -119,7 +91,7 @@ export default function FAQPage() {
         ),
       }))
       .filter((category) => category.faqs.length > 0);
-  }, [searchTerm, selectedCategory]);
+  }, [faqs, searchTerm, selectedCategory]);
 
   return (
     <section className="min-h-screen bg-gradient-to-b from-[#121212] to-[#1c1c1c] text-white py-20 px-6 md:px-20">
@@ -149,7 +121,7 @@ export default function FAQPage() {
             >
               All
             </li>
-            {faqData.map((category, idx) => (
+            {faqs.map((category, idx) => (
               <li
                 key={idx}
                 onClick={() => setSelectedCategory(idx)}
@@ -181,28 +153,35 @@ export default function FAQPage() {
             />
           </div>
 
-          {filteredFaqData.length === 0 && (
+          {loading && (
+            <p className="text-gray-400 text-center text-lg mt-16">
+              Loading FAQs...
+            </p>
+          )}
+
+          {!loading && filteredFaqData.length === 0 && (
             <p className="text-gray-400 text-center text-lg mt-16">
               No FAQs match your search.
             </p>
           )}
 
-          {filteredFaqData.map(({ category, faqs }, catIdx) => (
-            <section key={catIdx} className="mb-16">
-              <h3 className="text-3xl font-bold mb-8 text-[#d4af37] border-b border-[#d4af37]/50 pb-2">
-                {category}
-              </h3>
-              {faqs.map(({ question, answer }, faqIdx) => (
-                <AccordionItem
-                  key={faqIdx}
-                  question={question}
-                  answer={answer}
-                  isOpen={!!openIndices[`${catIdx}-${faqIdx}`]}
-                  onClick={() => toggleItem(catIdx, faqIdx)}
-                />
-              ))}
-            </section>
-          ))}
+          {!loading &&
+            filteredFaqData.map(({ category, faqs }, catIdx) => (
+              <section key={catIdx} className="mb-16">
+                <h3 className="text-3xl font-bold mb-8 text-[#d4af37] border-b border-[#d4af37]/50 pb-2">
+                  {category}
+                </h3>
+                {faqs.map(({ question, answer }, faqIdx) => (
+                  <AccordionItem
+                    key={faqIdx}
+                    question={question}
+                    answer={answer}
+                    isOpen={!!openIndices[`${catIdx}-${faqIdx}`]}
+                    onClick={() => toggleItem(catIdx, faqIdx)}
+                  />
+                ))}
+              </section>
+            ))}
 
           <div className="mt-20 p-10 bg-[#1f1f1f] rounded-3xl text-center shadow-lg">
             <FiInfo

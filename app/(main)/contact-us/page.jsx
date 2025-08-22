@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { FiMail, FiPhone, FiMapPin } from "react-icons/fi";
+import api from "@/lib/axios";
 
 export default function ContactUs() {
   const [formData, setFormData] = useState({
@@ -10,30 +11,78 @@ export default function ContactUs() {
     message: "",
   });
 
-  const [status, setStatus] = useState(null);
+  const [status, setStatus] = useState(null); // { error: boolean, message: string }
+  const [loading, setLoading] = useState(false);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (e) => {
+  const validateEmail = (email) => {
+    // simple email regex
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
+
+    // Basic validation
     if (!formData.name || !formData.email || !formData.message) {
       setStatus({ error: true, message: "Please fill in all fields." });
       return;
     }
-    setStatus({
-      error: false,
-      message: "Thanks for reaching out! We'll reply soon.",
-    });
-    setFormData({ name: "", email: "", message: "" });
+    if (!validateEmail(formData.email)) {
+      setStatus({
+        error: true,
+        message: "Please enter a valid email address.",
+      });
+      return;
+    }
+
+    setLoading(true);
+    setStatus(null);
+
+    try {
+      const token =
+        typeof window !== "undefined" ? localStorage.getItem("token") : null;
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+
+      // Post to your existing backend route (/api/contact)
+      const res = await api.post("/contact", formData, { headers });
+
+      // adapt to response shape (assume success status 201 or 200)
+      if (res && (res.status === 200 || res.status === 201)) {
+        setStatus({
+          error: false,
+          message: "Thanks for reaching out! We'll reply soon.",
+        });
+        setFormData({ name: "", email: "", message: "" });
+      } else {
+        setStatus({
+          error: true,
+          message:
+            (res && res.data && (res.data.error || res.data.message)) ||
+            "Something went wrong. Please try again.",
+        });
+      }
+    } catch (err) {
+      // prefer error message from server if available
+      const msg =
+        err?.response?.data?.error ||
+        err?.response?.data?.message ||
+        err.message ||
+        "Network error. Please try again later.";
+      setStatus({ error: true, message: msg });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <section
       className="min-h-screen bg-gradient-to-b from-[#121212] via-[#1e1e1e] to-[#121212] py-16 px-6 md:px-20 flex items-center"
-      style={{ scrollMarginTop: "5rem" }} // For smooth anchor scroll
+      style={{ scrollMarginTop: "5rem" }}
     >
       <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
         {/* Left Content */}
@@ -111,6 +160,8 @@ export default function ContactUs() {
               className={`mt-4 text-center text-sm ${
                 status.error ? "text-red-500" : "text-green-500"
               }`}
+              role="status"
+              aria-live="polite"
             >
               {status.message}
             </p>
@@ -118,9 +169,11 @@ export default function ContactUs() {
 
           <button
             type="submit"
-            className="mt-10 w-full bg-gradient-to-r from-[#d4af37] to-[#ffd700] py-4 rounded-xl font-bold text-black text-lg shadow-lg hover:scale-105 transition-transform"
+            disabled={loading}
+            className="mt-10 w-full bg-gradient-to-r from-[#d4af37] to-[#ffd700] py-4 rounded-xl font-bold text-black text-lg shadow-lg hover:scale-105 transition-transform disabled:opacity-60"
+            aria-busy={loading}
           >
-            Send Message
+            {loading ? "Sending..." : "Send Message"}
           </button>
         </form>
       </div>

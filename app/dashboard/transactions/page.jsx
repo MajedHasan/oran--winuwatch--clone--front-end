@@ -1,296 +1,287 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
-import {
-  FiCheckCircle,
-  FiXCircle,
-  FiEye,
-  FiPlus,
-  FiTrash2,
-  FiX,
-} from "react-icons/fi";
-
-// Mock Transactions Data
-const mockTransactions = [
-  {
-    id: 1,
-    user: "John Doe",
-    type: "Deposit",
-    method: "Credit Card",
-    amount: "£500",
-    status: "Pending",
-    date: "21 Aug 2025",
-  },
-  {
-    id: 2,
-    user: "Jane Smith",
-    type: "Withdrawal",
-    method: "PayPal",
-    amount: "£200",
-    status: "Approved",
-    date: "20 Aug 2025",
-  },
-  {
-    id: 3,
-    user: "Mike Johnson",
-    type: "Deposit",
-    method: "Crypto",
-    amount: "£1000",
-    status: "Rejected",
-    date: "19 Aug 2025",
-  },
-  {
-    id: 4,
-    user: "Alice Brown",
-    type: "Withdrawal",
-    method: "Credit Card",
-    amount: "£350",
-    status: "Pending",
-    date: "18 Aug 2025",
-  },
-];
+import React, { useEffect, useState } from "react";
+import api from "@/lib/axios"; // your axios instance
+import { FiEye, FiEdit, FiTrash2, FiPlus, FiSearch } from "react-icons/fi";
 
 export default function TransactionsPage() {
-  const [transactions, setTransactions] = useState(mockTransactions);
-  const [selectedTransaction, setSelectedTransaction] = useState(null);
-  const [modalType, setModalType] = useState("");
-  const [searchTerm, setSearchTerm] = useState("");
-  const [filterType, setFilterType] = useState("All");
-  const [filterStatus, setFilterStatus] = useState("All");
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 3;
+  const [transactions, setTransactions] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [token, setToken] = useState(null);
+  const [search, setSearch] = useState("");
+  const [editingTransaction, setEditingTransaction] = useState(null);
+  const [newTransaction, setNewTransaction] = useState({
+    user: "",
+    type: "wallet_topup",
+    direction: "credit",
+    amount: 0,
+    currency: "GBP",
+    competition: "",
+    bid: "",
+    provider: "",
+    status: "pending",
+    balanceBefore: 0,
+    balanceAfter: 0,
+    metadata: "",
+  });
 
-  const openModal = (transaction, type) => {
-    setSelectedTransaction(transaction);
-    setModalType(type);
+  // Get token client-side to avoid hydration mismatch
+  useEffect(() => {
+    const t = localStorage.getItem("token");
+    setToken(t);
+  }, []);
+
+  // Fetch transactions
+  useEffect(() => {
+    if (!token) return;
+    async function fetchTransactions() {
+      setLoading(true);
+      try {
+        const res = await api.get("/transactions", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setTransactions(res.data);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchTransactions();
+  }, [token]);
+
+  // Add transaction
+  const handleAdd = async () => {
+    try {
+      const res = await api.post("/transactions", newTransaction, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setTransactions([res.data, ...transactions]);
+      setNewTransaction({
+        user: "",
+        type: "wallet_topup",
+        direction: "credit",
+        amount: 0,
+        currency: "GBP",
+        competition: "",
+        bid: "",
+        provider: "",
+        status: "pending",
+        balanceBefore: 0,
+        balanceAfter: 0,
+        metadata: "",
+      });
+    } catch (err) {
+      console.error(err);
+    }
   };
 
-  const closeModal = () => {
-    setSelectedTransaction(null);
-    setModalType("");
+  // Edit transaction
+  const handleUpdate = async () => {
+    try {
+      const res = await api.put(
+        `/transactions/${editingTransaction._id}`,
+        editingTransaction,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      setTransactions(
+        transactions.map((t) => (t._id === res.data._id ? res.data : t))
+      );
+      setEditingTransaction(null);
+    } catch (err) {
+      console.error(err);
+    }
   };
 
-  const handleApprove = (id) => {
-    setTransactions(
-      transactions.map((t) => (t.id === id ? { ...t, status: "Approved" } : t))
-    );
-    closeModal();
+  // Delete transaction
+  const handleDelete = async (id) => {
+    try {
+      await api.delete(`/transactions/${id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setTransactions(transactions.filter((t) => t._id !== id));
+    } catch (err) {
+      console.error(err);
+    }
   };
 
-  const handleReject = (id) => {
-    setTransactions(
-      transactions.map((t) => (t.id === id ? { ...t, status: "Rejected" } : t))
-    );
-    closeModal();
-  };
-
-  const handleDelete = (id) => {
-    setTransactions(transactions.filter((t) => t.id !== id));
-    closeModal();
-  };
-
-  const filteredTransactions = useMemo(() => {
-    return transactions
-      .filter(
-        (t) =>
-          (filterType === "All" || t.type === filterType) &&
-          (filterStatus === "All" || t.status === filterStatus) &&
-          (t.user.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            t.method.toLowerCase().includes(searchTerm.toLowerCase()))
-      )
-      .sort((a, b) => b.id - a.id);
-  }, [transactions, filterType, filterStatus, searchTerm]);
-
-  const totalPages = Math.ceil(filteredTransactions.length / itemsPerPage);
-  const displayedTransactions = filteredTransactions.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
+  const filteredTransactions = transactions.filter(
+    (t) =>
+      t.user.includes(search) ||
+      t.type.includes(search) ||
+      t.direction.includes(search) ||
+      t.status.includes(search)
   );
 
   return (
-    <div className="p-6 md:p-10 bg-gray-900 min-h-screen text-white">
-      <h1 className="text-3xl font-bold mb-6">Transactions</h1>
-
-      {/* Filters & Search */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
-        <input
-          type="text"
-          placeholder="Search by user or method"
-          className="px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-yellow-500 flex-1"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-        />
-        <select
-          className="px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-yellow-500"
-          value={filterType}
-          onChange={(e) => setFilterType(e.target.value)}
-        >
-          <option>All</option>
-          <option>Deposit</option>
-          <option>Withdrawal</option>
-        </select>
-        <select
-          className="px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-yellow-500"
-          value={filterStatus}
-          onChange={(e) => setFilterStatus(e.target.value)}
-        >
-          <option>All</option>
-          <option>Pending</option>
-          <option>Approved</option>
-          <option>Rejected</option>
-        </select>
+    <div className="min-h-screen p-6 bg-gray-900 text-white">
+      <div className="flex justify-between items-center mb-4">
+        <h1 className="text-2xl font-bold">Transactions</h1>
+        <div className="flex items-center space-x-2">
+          <input
+            type="text"
+            placeholder="Search..."
+            className="p-2 rounded bg-gray-800 border border-gray-700 text-white"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+          <button
+            className="bg-green-600 hover:bg-green-500 px-4 py-2 rounded flex items-center"
+            onClick={handleAdd}
+          >
+            <FiPlus className="mr-2" /> Add
+          </button>
+        </div>
       </div>
 
-      {/* Transactions Table */}
-      <div className="overflow-x-auto bg-gray-800 rounded-xl">
-        <table className="min-w-full text-left">
-          <thead className="bg-gray-700">
-            <tr>
-              <th className="px-6 py-3">User</th>
-              <th className="px-6 py-3">Type</th>
-              <th className="px-6 py-3">Method</th>
-              <th className="px-6 py-3">Amount</th>
-              <th className="px-6 py-3">Status</th>
-              <th className="px-6 py-3">Date</th>
-              <th className="px-6 py-3">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {displayedTransactions.map((t) => (
-              <tr
-                key={t.id}
-                className="border-b border-gray-700 hover:bg-gray-700/50 transition"
-              >
-                <td className="px-6 py-3">{t.user}</td>
-                <td className="px-6 py-3">{t.type}</td>
-                <td className="px-6 py-3">{t.method}</td>
-                <td className="px-6 py-3">{t.amount}</td>
-                <td className="px-6 py-3">
-                  <span
-                    className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold ${
-                      t.status === "Approved"
-                        ? "bg-green-500/20 text-green-300"
-                        : t.status === "Rejected"
-                        ? "bg-red-500/20 text-red-300"
-                        : "bg-yellow-500/20 text-yellow-300"
-                    }`}
-                  >
-                    {t.status}
-                  </span>
-                </td>
-                <td className="px-6 py-3">{t.date}</td>
-                <td className="px-6 py-3 flex gap-2">
-                  <button
-                    onClick={() => openModal(t, "view")}
-                    className="bg-gray-700 p-2 rounded-lg hover:bg-gray-600"
-                  >
-                    <FiEye />
-                  </button>
-                  {t.status === "Pending" && (
-                    <>
-                      <button
-                        onClick={() => handleApprove(t.id)}
-                        className="bg-green-700 p-2 rounded-lg hover:bg-green-600"
-                      >
-                        <FiCheckCircle />
-                      </button>
-                      <button
-                        onClick={() => handleReject(t.id)}
-                        className="bg-red-700 p-2 rounded-lg hover:bg-red-600"
-                      >
-                        <FiXCircle />
-                      </button>
-                    </>
-                  )}
-                  <button
-                    onClick={() => openModal(t, "delete")}
-                    className="bg-gray-700 p-2 rounded-lg hover:bg-gray-600"
-                  >
-                    <FiTrash2 />
-                  </button>
-                </td>
+      {loading ? (
+        <div>Loading...</div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="min-w-full bg-gray-800 rounded-lg">
+            <thead>
+              <tr className="text-left border-b border-gray-700">
+                <th className="px-4 py-2">User</th>
+                <th className="px-4 py-2">Type</th>
+                <th className="px-4 py-2">Direction</th>
+                <th className="px-4 py-2">Amount</th>
+                <th className="px-4 py-2">Currency</th>
+                <th className="px-4 py-2">Provider</th>
+                <th className="px-4 py-2">Status</th>
+                <th className="px-4 py-2">Balance Before</th>
+                <th className="px-4 py-2">Balance After</th>
+                <th className="px-4 py-2">Actions</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {filteredTransactions.map((t) => (
+                <tr
+                  key={t._id}
+                  className="border-b border-gray-700 hover:bg-gray-700"
+                >
+                  <td className="px-4 py-2">{t.user}</td>
+                  <td className="px-4 py-2">{t.type}</td>
+                  <td className="px-4 py-2">{t.direction}</td>
+                  <td className="px-4 py-2">{t.amount}</td>
+                  <td className="px-4 py-2">{t.currency}</td>
+                  <td className="px-4 py-2">{t.provider || "-"}</td>
+                  <td className="px-4 py-2">{t.status}</td>
+                  <td className="px-4 py-2">{t.balanceBefore}</td>
+                  <td className="px-4 py-2">{t.balanceAfter}</td>
+                  <td className="px-4 py-2 flex space-x-2">
+                    <button
+                      className="bg-blue-600 px-2 py-1 rounded hover:bg-blue-500"
+                      onClick={() => setEditingTransaction(t)}
+                    >
+                      <FiEdit />
+                    </button>
+                    <button
+                      className="bg-red-600 px-2 py-1 rounded hover:bg-red-500"
+                      onClick={() => handleDelete(t._id)}
+                    >
+                      <FiTrash2 />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
-      {/* Pagination */}
-      <div className="flex justify-end mt-4 gap-2">
-        <button
-          onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
-          className="px-3 py-1 bg-gray-700 rounded-lg hover:bg-gray-600"
-          disabled={currentPage === 1}
-        >
-          Prev
-        </button>
-        <span className="px-3 py-1">{currentPage}</span>
-        <button
-          onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
-          className="px-3 py-1 bg-gray-700 rounded-lg hover:bg-gray-600"
-          disabled={currentPage === totalPages}
-        >
-          Next
-        </button>
-      </div>
-
-      {/* Modal */}
-      {selectedTransaction && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
-          <div className="bg-gray-900 rounded-xl max-w-lg w-full p-6 relative">
-            <button
-              onClick={closeModal}
-              className="absolute top-4 right-4 text-white hover:text-yellow-400"
-            >
-              <FiX size={24} />
-            </button>
-
-            {modalType === "view" && (
-              <>
-                <h2 className="text-xl font-bold mb-4">Transaction Details</h2>
-                <p>
-                  <strong>User:</strong> {selectedTransaction.user}
-                </p>
-                <p>
-                  <strong>Type:</strong> {selectedTransaction.type}
-                </p>
-                <p>
-                  <strong>Method:</strong> {selectedTransaction.method}
-                </p>
-                <p>
-                  <strong>Amount:</strong> {selectedTransaction.amount}
-                </p>
-                <p>
-                  <strong>Status:</strong> {selectedTransaction.status}
-                </p>
-                <p>
-                  <strong>Date:</strong> {selectedTransaction.date}
-                </p>
-              </>
-            )}
-
-            {modalType === "delete" && (
-              <>
-                <h2 className="text-xl font-bold mb-4 text-red-500">
-                  Confirm Delete
-                </h2>
-                <p>Are you sure you want to delete this transaction?</p>
-                <div className="mt-4 flex gap-3">
-                  <button
-                    onClick={() => handleDelete(selectedTransaction.id)}
-                    className="bg-red-600 px-5 py-2 rounded-lg hover:bg-red-500"
-                  >
-                    Delete
-                  </button>
-                  <button
-                    onClick={closeModal}
-                    className="bg-gray-700 px-5 py-2 rounded-lg hover:bg-gray-600"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </>
-            )}
+      {/* Edit Modal */}
+      {editingTransaction && (
+        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center">
+          <div className="bg-gray-900 p-6 rounded-lg w-full max-w-md">
+            <h2 className="text-xl font-bold mb-4">Edit Transaction</h2>
+            <div className="space-y-2">
+              <input
+                type="text"
+                placeholder="User"
+                value={editingTransaction.user}
+                onChange={(e) =>
+                  setEditingTransaction({
+                    ...editingTransaction,
+                    user: e.target.value,
+                  })
+                }
+                className="w-full p-2 rounded bg-gray-800 border border-gray-700 text-white"
+              />
+              <input
+                type="number"
+                placeholder="Amount"
+                value={editingTransaction.amount}
+                onChange={(e) =>
+                  setEditingTransaction({
+                    ...editingTransaction,
+                    amount: Number(e.target.value),
+                  })
+                }
+                className="w-full p-2 rounded bg-gray-800 border border-gray-700 text-white"
+              />
+              <select
+                value={editingTransaction.type}
+                onChange={(e) =>
+                  setEditingTransaction({
+                    ...editingTransaction,
+                    type: e.target.value,
+                  })
+                }
+                className="w-full p-2 rounded bg-gray-800 border border-gray-700 text-white"
+              >
+                <option value="wallet_topup">Wallet Topup</option>
+                <option value="wallet_withdrawal">Wallet Withdrawal</option>
+                <option value="ticket_purchase">Ticket Purchase</option>
+                <option value="refund">Refund</option>
+                <option value="prize_payout">Prize Payout</option>
+                <option value="admin_adjustment">Admin Adjustment</option>
+                <option value="fee">Fee</option>
+              </select>
+              <select
+                value={editingTransaction.direction}
+                onChange={(e) =>
+                  setEditingTransaction({
+                    ...editingTransaction,
+                    direction: e.target.value,
+                  })
+                }
+                className="w-full p-2 rounded bg-gray-800 border border-gray-700 text-white"
+              >
+                <option value="credit">Credit</option>
+                <option value="debit">Debit</option>
+              </select>
+              <select
+                value={editingTransaction.status}
+                onChange={(e) =>
+                  setEditingTransaction({
+                    ...editingTransaction,
+                    status: e.target.value,
+                  })
+                }
+                className="w-full p-2 rounded bg-gray-800 border border-gray-700 text-white"
+              >
+                <option value="pending">Pending</option>
+                <option value="completed">Completed</option>
+                <option value="failed">Failed</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+            </div>
+            <div className="flex justify-end space-x-2 mt-4">
+              <button
+                className="bg-gray-700 px-4 py-2 rounded hover:bg-gray-600"
+                onClick={() => setEditingTransaction(null)}
+              >
+                Cancel
+              </button>
+              <button
+                className="bg-green-600 px-4 py-2 rounded hover:bg-green-500"
+                onClick={handleUpdate}
+              >
+                Save
+              </button>
+            </div>
           </div>
         </div>
       )}

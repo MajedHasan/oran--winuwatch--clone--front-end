@@ -65,7 +65,7 @@ const Header = () => {
             </Menu.Button>
             <Transition as={Fragment} {...transitionProps}>
               <Menu.Items className="absolute right-0 mt-2 w-36 bg-white text-black rounded-lg shadow-lg ring-1 ring-black ring-opacity-5 z-20">
-                {["EN", "FR", "DE", "ES"].map((lang) => (
+                {["EN", "IL"].map((lang) => (
                   <Menu.Item key={lang}>
                     {({ active }) => (
                       <button
