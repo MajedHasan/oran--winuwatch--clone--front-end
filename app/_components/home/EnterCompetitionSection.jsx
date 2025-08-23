@@ -3,27 +3,7 @@
 import Image from "next/image";
 import { useState, useEffect } from "react";
 import { ArrowLeft, ArrowRight } from "lucide-react";
-
-const slides = [
-  {
-    title: "#1 ROLEX BRUCE WAYNE",
-    image: "/images/watch1.webp",
-    drawDate: "2025-08-22T23:59:59",
-    watch: "ROLEX BRUCE WAYNE",
-    watchValue: "£20k",
-    entryPrice: "£15",
-    maxTickets: "2000",
-  },
-  {
-    title: "#2 ROLEX EVEROSE-GOLD 18 Karat",
-    image: "/images/watch2.webp",
-    drawDate: "2025-09-01T23:59:59",
-    watch: "ROLEX EVEROSE-GOLD 18 Karat",
-    watchValue: "£38k",
-    entryPrice: "£25",
-    maxTickets: "1500",
-  },
-];
+import api from "@/lib/axios"; // your axios instance
 
 function Countdown({ targetDate }) {
   const [timeLeft, setTimeLeft] = useState(getTimeLeft());
@@ -67,7 +47,23 @@ function Countdown({ targetDate }) {
 }
 
 export default function EnterCompetitionSection() {
+  const [slides, setSlides] = useState([]);
   const [activeSlide, setActiveSlide] = useState(0);
+
+  // Fetch competitions
+  useEffect(() => {
+    const fetchCompetitions = async () => {
+      try {
+        const response = await api.get("/competitions"); // your endpoint
+        setSlides(response.data.items); // assuming API returns an array like your original slides
+        console.log("Response: ", response);
+      } catch (error) {
+        console.error("Error fetching competitions:", error);
+      }
+    };
+
+    fetchCompetitions();
+  }, []);
 
   const nextSlide = () => {
     setActiveSlide((prev) => (prev + 1) % slides.length);
@@ -76,6 +72,17 @@ export default function EnterCompetitionSection() {
   const prevSlide = () => {
     setActiveSlide((prev) => (prev - 1 + slides.length) % slides.length);
   };
+
+  if (!slides.length) {
+    return (
+      <section className="py-16 px-4 md:px-12 lg:px-24 bg-white text-center">
+        <h2 className="text-3xl md:text-4xl font-bold mb-6">
+          Enter the competition
+        </h2>
+        <p>Loading competitions...</p>
+      </section>
+    );
+  }
 
   return (
     <section className="py-16 px-4 md:px-12 lg:px-24 bg-white">
@@ -112,11 +119,16 @@ export default function EnterCompetitionSection() {
               {/* Image */}
               <div className="w-full lg:w-1/2 aspect-[4/3] overflow-hidden rounded-xl">
                 <Image
-                  src={slide.image}
-                  alt={slide.watch}
+                  src={
+                    slide.images.length > 0
+                      ? `http://localhost:5001${slide.images[0]}`
+                      : "/images/watch1.webp"
+                  }
+                  alt={slide.title}
                   width={500}
                   height={400}
                   className="w-full h-full object-cover rounded-xl"
+                  unoptimized={true} // bypass domain check
                 />
               </div>
 

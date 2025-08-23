@@ -107,13 +107,19 @@ export default function TransactionsPage() {
     }
   };
 
-  const filteredTransactions = transactions.filter(
-    (t) =>
-      t.user.includes(search) ||
-      t.type.includes(search) ||
-      t.direction.includes(search) ||
-      t.status.includes(search)
-  );
+  const filteredTransactions = transactions.filter((t) => {
+    const userName = t.user?.name?.toLowerCase() || "";
+    const userEmail = t.user?.email?.toLowerCase() || "";
+    const searchLower = search.toLowerCase();
+
+    return (
+      userName.includes(searchLower) ||
+      userEmail.includes(searchLower) ||
+      t.type.toLowerCase().includes(searchLower) ||
+      t.direction.toLowerCase().includes(searchLower) ||
+      t.status.toLowerCase().includes(searchLower)
+    );
+  });
 
   return (
     <div className="min-h-screen p-6 bg-gray-900 text-white">
@@ -161,7 +167,12 @@ export default function TransactionsPage() {
                   key={t._id}
                   className="border-b border-gray-700 hover:bg-gray-700"
                 >
-                  <td className="px-4 py-2">{t.user}</td>
+                  <td className="px-4 py-2">
+                    {t.user?.name} <br />
+                    <span className="text-sm text-gray-400">
+                      {t.user?.email}
+                    </span>
+                  </td>
                   <td className="px-4 py-2">{t.type}</td>
                   <td className="px-4 py-2">{t.direction}</td>
                   <td className="px-4 py-2">{t.amount}</td>
@@ -200,7 +211,7 @@ export default function TransactionsPage() {
               <input
                 type="text"
                 placeholder="User"
-                value={editingTransaction.user}
+                value={editingTransaction.user.name}
                 onChange={(e) =>
                   setEditingTransaction({
                     ...editingTransaction,

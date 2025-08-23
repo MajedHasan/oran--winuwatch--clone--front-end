@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import Image from "next/image";
 import api from "@/lib/axios";
 import { FiSearch } from "react-icons/fi";
 
@@ -52,13 +53,13 @@ export default function WinnersPage() {
   });
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white p-10">
+    <div className=" bg-[#0b0b0b] text-white p-10">
       <h1 className="text-4xl font-bold mb-6 text-yellow-400">
         Competition Winners
       </h1>
 
       {/* Search & Sort */}
-      <div className="flex flex-col md:flex-row gap-4 mb-6 items-start md:items-center">
+      <div className="flex flex-col md:flex-row gap-4 mb-10 items-start md:items-center">
         <div className="flex items-center bg-gray-800 rounded-lg px-3 py-2 w-full md:w-1/2">
           <FiSearch className="text-gray-400 mr-2" />
           <input
@@ -104,52 +105,48 @@ export default function WinnersPage() {
         {sortedWinners.map((winner) => (
           <div
             key={winner._id}
-            className="bg-gray-800 rounded-2xl p-6 shadow-lg hover:shadow-2xl transition transform hover:scale-105"
+            className="relative rounded-xl overflow-hidden border border-[#d4af37]/30 shadow-lg h-[420px] group"
           >
-            <div className="mb-4">
-              <img
-                src={`http://localhost:5001${
-                  winner.user?.avatar ||
-                  winner.profileImage ||
-                  "/default-avatar.png"
-                }`}
-                alt={winner.user?.name || winner.name}
-                className="w-full h-48 object-cover rounded-lg border-2 border-yellow-400"
-              />
-            </div>
+            {/* Image */}
+            <Image
+              src={`http://localhost:5001${
+                winner.profileImage || "/default-avatar.png"
+              }`}
+              alt={winner.name}
+              fill
+              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+              className="object-cover transition-transform duration-700 group-hover:scale-105"
+              unoptimized
+            />
 
-            <h2 className="text-2xl font-semibold text-yellow-400 mb-2">
-              {winner.user?.name || winner.name}
-            </h2>
-
-            <p className="text-gray-300 mb-1">
-              Competition:{" "}
-              <span className="font-medium">
-                {winner.competition?.title || winner.competitionTitle}
-              </span>
-            </p>
-            <p className="text-gray-300 mb-1">
-              Prize: <span className="font-medium">{winner.prize}</span>
-            </p>
-            {winner.bidAmount && (
-              <p className="text-gray-300 mb-1">
-                Winning Bid:{" "}
-                <span className="font-medium">${winner.bidAmount}</span>
+            {/* Overlay Content */}
+            <div className="absolute bottom-0 left-0 w-full bg-gradient-to-t from-black/90 via-black/60 to-transparent p-6 opacity-100 group-hover:opacity-100 transition-opacity duration-500">
+              <p className="text-xs uppercase text-[#ffd700] tracking-widest mb-1">
+                Winner of
               </p>
-            )}
-            <p className="text-gray-400 text-sm mt-2">
-              Date: {new Date(winner.createdAt).toLocaleDateString()}{" "}
-              {new Date(winner.createdAt).toLocaleTimeString()}
-            </p>
+              <h3 className="text-lg font-semibold text-white leading-snug">
+                {winner.competition?.title || winner.competition}
+              </h3>
+              <p className="mt-1 text-base font-medium text-white">
+                {winner.name}
+              </p>
+              <p className="text-sm text-[#ffd700]">
+                {winner.prize} <span className="text-white">Value</span>
+              </p>
+              <p className="text-gray-400 text-xs mt-2">
+                {new Date(winner.createdAt).toLocaleDateString()}{" "}
+                {new Date(winner.createdAt).toLocaleTimeString()}
+              </p>
+            </div>
           </div>
         ))}
       </div>
 
       {/* Load More */}
       {hasMore && (
-        <div className="flex justify-center mt-8">
+        <div className="flex justify-center mt-12">
           <button
-            className="bg-yellow-400 text-black px-6 py-3 rounded-lg hover:bg-yellow-500 transition"
+            className="bg-gradient-to-r from-[#d4af37] to-[#ffd700] text-black px-8 py-3 rounded-full font-semibold shadow-lg hover:scale-105 transition"
             onClick={() => {
               const nextPage = page + 1;
               setPage(nextPage);

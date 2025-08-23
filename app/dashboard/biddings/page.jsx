@@ -97,7 +97,7 @@ export default function BiddingsPage() {
       .filter(
         (b) =>
           (competitionFilter === "All" ||
-            b.competition?.title === competitionFilter) &&
+            b.competition?._id === competitionFilter) &&
           (b.user?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
             b.user?.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
             b.competition?.title
@@ -209,19 +209,29 @@ export default function BiddingsPage() {
                 <td className="px-6 py-3">
                   {bid.user?.name || bid.user?.email}
                 </td>
-                <td className="px-6 py-3">{bid.tickets}</td>
-                <td className="px-6 py-3">£{bid.totalAmount}</td>
+                <td className="px-6 py-3">
+                  {bid.tickets.map((t, i) => (
+                    <span
+                      key={i}
+                      className={t.isWinner ? "text-green-400 font-bold" : ""}
+                    >
+                      {t.number}
+                      {i < bid.tickets.length - 1 ? ", " : ""}
+                    </span>
+                  ))}
+                </td>
+                <td className="px-6 py-3">£{bid.totalPrice}</td>
                 <td className="px-6 py-3">
                   <span
                     className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold ${
-                      bid.status === "confirmed"
+                      bid.result === "confirmed"
                         ? "bg-green-500/20 text-green-300"
                         : bid.status === "failed"
                         ? "bg-red-500/20 text-red-300"
                         : "bg-yellow-500/20 text-yellow-300"
                     }`}
                   >
-                    {bid.status}
+                    {bid.result}
                   </span>
                 </td>
                 <td className="px-6 py-3">
@@ -294,10 +304,11 @@ export default function BiddingsPage() {
                   {selectedBid.user?.name || selectedBid.user?.email}
                 </p>
                 <p>
-                  <strong>Tickets:</strong> {selectedBid.tickets}
+                  <strong>Tickets:</strong>{" "}
+                  {selectedBid.tickets.map((t) => t.number).join(", ")}
                 </p>
                 <p>
-                  <strong>Total Amount:</strong> £{selectedBid.totalAmount}
+                  <strong>Total Amount:</strong> £{selectedBid.totalPrice}
                 </p>
                 <p>
                   <strong>Status:</strong> {selectedBid.status}
