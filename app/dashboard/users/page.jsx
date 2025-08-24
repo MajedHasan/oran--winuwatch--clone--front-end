@@ -47,16 +47,24 @@ export default function UsersPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [sortConfig, setSortConfig] = useState({ key: null, direction: null });
   const [loading, setLoading] = useState(true);
+  const [headers, setHeaders] = useState({}); // store headers in state
 
   const usersPerPage = 10;
 
-  const token = localStorage.getItem("token");
-  const headers = token ? { Authorization: `Bearer ${token}` } : {};
-
   useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (token) {
+      setHeaders(token ? { Authorization: `Bearer ${token}` } : {});
+    }
+
+    if (!token) return setLoading(false);
+
     const fetchUsers = async () => {
       try {
-        const res = await api.get("/users", { headers });
+        const res = await api.get("/users", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
         setUsers(res.data.items);
       } catch (err) {
         console.error(err);
