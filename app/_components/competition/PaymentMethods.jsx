@@ -31,6 +31,7 @@ export default function PaymentMethods({ competition, selection, totals }) {
         selection: {
           mode: selection.mode,
           manualQty: selection.mode === "manual" ? qty : 0,
+          vipIndex: selection.mode === "vip" ? selection.vipIndex : null, // <-- send index
           vipPack:
             selection.mode === "vip"
               ? competition.vipPacks?.[selection.vipIndex || 0]

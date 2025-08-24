@@ -19,9 +19,7 @@ import {
 const nav = [
   { href: "/users", label: "Overview", icon: <FiGrid /> },
   { href: "/users/profile", label: "Profile", icon: <FiUser /> },
-  { href: "/users/bidding", label: "My Biddings", icon: <FiTrendingUp /> },
-  { href: "/users/my-biddings", label: "My Biddings", icon: <FiTrendingUp /> },
-  { href: "/users/wallet", label: "Wallet", icon: <FiCreditCard /> },
+  { href: "/users/biddings", label: "My Biddings", icon: <FiTrendingUp /> },
   { href: "/users/settings", label: "Settings", icon: <FiSettings /> },
 ];
 

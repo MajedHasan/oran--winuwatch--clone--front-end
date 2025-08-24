@@ -1,6 +1,7 @@
+// app/(user)/dashboard/page.jsx  (or wherever your component file lives)
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
   FiArrowUpRight,
   FiArrowDownRight,
@@ -9,9 +10,10 @@ import {
   FiTrendingUp,
   FiTrendingDown,
 } from "react-icons/fi";
+import api from "@/lib/axios";
 
 function Sparkline({ values = [3, 6, 4, 8, 7, 10, 9] }) {
-  const max = Math.max(...values);
+  const max = Math.max(...values, 1);
   const points = values
     .map(
       (v, i) => `${(i / (values.length - 1)) * 100},${100 - (v / max) * 100}`
@@ -37,59 +39,152 @@ function Sparkline({ values = [3, 6, 4, 8, 7, 10, 9] }) {
   );
 }
 
+/* Small skeleton helpers (keeps markup inline for easy copy/paste) */
+function StatSkeleton() {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-5">
+      <div className="h-4 w-24 bg-white/10 rounded mb-4 animate-pulse" />
+      <div className="flex items-center justify-between">
+        <div className="h-8 w-24 bg-white/10 rounded animate-pulse" />
+        <div className="h-6 w-6 bg-white/10 rounded animate-pulse" />
+      </div>
+      <div className="h-4 w-12 bg-white/10 rounded mt-3 animate-pulse" />
+    </div>
+  );
+}
+
+function RowSkeleton() {
+  return (
+    <tr className="border-t border-white/10">
+      <td className="px-6 py-4">
+        <div className="h-4 w-48 bg-white/10 rounded animate-pulse" />
+      </td>
+      <td className="px-6 py-4">
+        <div className="h-4 w-8 bg-white/10 rounded animate-pulse" />
+      </td>
+      <td className="px-6 py-4">
+        <div className="h-4 w-16 bg-white/10 rounded animate-pulse" />
+      </td>
+      <td className="px-6 py-4">
+        <div className="h-4 w-24 bg-white/10 rounded animate-pulse" />
+      </td>
+      <td className="px-6 py-4">
+        <div className="h-4 w-12 bg-white/10 rounded animate-pulse" />
+      </td>
+    </tr>
+  );
+}
+
 export default function DashboardHome() {
-  const stats = [
-    {
-      label: "Active Entries",
-      value: "12",
-      delta: "+3",
-      up: true,
-      icon: <FiTrendingUp />,
-    },
-    {
-      label: "Total Wins",
-      value: "02",
-      delta: "+1",
-      up: true,
-      icon: <FiTrendingUp />,
-    },
-    {
-      label: "Wallet Balance",
-      value: "£1,240",
-      delta: "−£60",
-      up: false,
-      icon: <FiTrendingDown />,
-    },
-    {
-      label: "Next Draw In",
-      value: "18h 24m",
-      icon: <FiClock />,
-    },
+  const [token, setToken] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [statsData, setStatsData] = useState(null);
+  const [recentBiddings, setRecentBiddings] = useState([]);
+  const [sparklineValues, setSparklineValues] = useState([
+    3, 6, 4, 8, 7, 10, 9,
+  ]);
+
+  // Get token client-side to avoid hydration mismatch
+  useEffect(() => {
+    const t =
+      typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    setToken(t);
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+    async function load() {
+      try {
+        setLoading(true);
+        const headers = token ? { Authorization: `Bearer ${token}` } : {};
+        const res = await api.get("/userDashboard/stats", { headers }); // GET /api/dashboard/stats
+        if (!mounted) return;
+        const d = res.data || {};
+
+        // Stats array kept same shape as your original to minimize change
+        const stats = [
+          {
+            label: "Active Entries",
+            value: d.activeEntries ?? 0,
+            delta: d.activeEntriesDelta ?? null,
+            up: (d.activeEntriesDelta ?? 0) >= 0,
+            icon: <FiTrendingUp />,
+          },
+          {
+            label: "Total Wins",
+            value: d.totalWins ?? 0,
+            delta: d.totalWinsDelta ?? null,
+            up: (d.totalWinsDelta ?? 0) >= 0,
+            icon: <FiTrendingUp />,
+          },
+          {
+            label: "Wallet Balance",
+            value: `£${(d.walletBalance ?? 0).toLocaleString(undefined, {
+              minimumFractionDigits: 0,
+              maximumFractionDigits: 2,
+            })}`,
+            delta:
+              d.walletBalanceDelta != null
+                ? `${d.walletBalanceDelta >= 0 ? "+" : ""}£${
+                    d.walletBalanceDelta
+                  }`
+                : null,
+            up: (d.walletBalanceDelta ?? 0) >= 0,
+            icon: <FiTrendingDown />,
+          },
+          {
+            label: "Next Draw In",
+            value: d.nextDrawIn ?? "N/A",
+            icon: <FiClock />,
+          },
+        ];
+
+        setStatsData({ stats, userName: d.userName || "Collector" });
+        setRecentBiddings(
+          (d.recentBiddings || []).map((b) => ({
+            name: b.competition?.title || "—",
+            tickets: b.tickets || 0,
+            amount: `£${Number(b.amount || 0).toLocaleString(undefined, {
+              minimumFractionDigits: 0,
+              maximumFractionDigits: 2,
+            })}`,
+            date: new Date(b.date).toLocaleDateString("en-GB", {
+              day: "2-digit",
+              month: "short",
+              year: "numeric",
+            }),
+            status:
+              (b.status &&
+                String(b.status).charAt(0).toUpperCase() +
+                  String(b.status).slice(1)) ||
+              "Pending",
+          }))
+        );
+
+        if (Array.isArray(d.winRateTrend) && d.winRateTrend.length > 0) {
+          setSparklineValues(d.winRateTrend);
+        }
+      } catch (err) {
+        console.error("Error fetching dashboard stats:", err);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    }
+    load();
+    return () => {
+      mounted = false;
+    };
+  }, [token]);
+
+  // keep local references for rendering
+  const stats = statsData?.stats ?? [
+    { label: "Active Entries", value: "—", icon: <FiTrendingUp /> },
+    { label: "Total Wins", value: "—", icon: <FiTrendingUp /> },
+    { label: "Wallet Balance", value: "—", icon: <FiTrendingDown /> },
+    { label: "Next Draw In", value: "—", icon: <FiClock /> },
   ];
 
-  const recentBiddings = [
-    {
-      name: "Rolex Submariner Hulk",
-      tickets: 3,
-      amount: "£75",
-      date: "21 Aug 2025",
-      status: "Pending",
-    },
-    {
-      name: "Patek Philippe Nautilus",
-      tickets: 5,
-      amount: "£125",
-      date: "19 Aug 2025",
-      status: "Confirmed",
-    },
-    {
-      name: "Audemars Piguet Royal Oak",
-      tickets: 2,
-      amount: "£50",
-      date: "16 Aug 2025",
-      status: "Failed",
-    },
-  ];
+  const userName = statsData?.userName ?? "Collector";
 
   return (
     <div className="space-y-8">
@@ -98,7 +193,7 @@ export default function DashboardHome() {
         <div className="flex-1">
           <h1 className="text-3xl md:text-4xl font-extrabold">
             Welcome back,{" "}
-            <span className="text-yellow-400 drop-shadow-lg">Collector</span>
+            <span className="text-yellow-400 drop-shadow-lg">{userName}</span>
           </h1>
           <p className="text-white/70 mt-2 text-lg">
             Track your entries, follow upcoming draws, and manage your account —
@@ -120,7 +215,7 @@ export default function DashboardHome() {
           </div>
         </div>
         <div className="w-full md:w-72 lg:w-80 rounded-2xl border border-white/10 bg-black/30 p-4">
-          <Sparkline />
+          <Sparkline values={sparklineValues} />
           <p className="mt-2 text-sm text-white/70">
             Win rate trend (last 30 days)
           </p>
@@ -129,28 +224,31 @@ export default function DashboardHome() {
 
       {/* Stats Section */}
       <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        {stats.map((s, i) => (
-          <div
-            key={i}
-            className="rounded-2xl border border-white/10 bg-white/[0.03] p-5 hover:bg-white/[0.05] transition"
-          >
-            <div className="text-sm text-white/70">{s.label}</div>
-            <div className="mt-1 flex items-center justify-between">
-              <div className="text-2xl font-bold">{s.value}</div>
-              <div className="text-yellow-400">{s.icon}</div>
-            </div>
-            {s.delta && (
+        {loading
+          ? // show skeletons if loading
+            [0, 1, 2, 3].map((i) => <StatSkeleton key={i} />)
+          : stats.map((s, i) => (
               <div
-                className={`mt-1 inline-flex items-center gap-1 text-sm ${
-                  s.up ? "text-emerald-400" : "text-rose-400"
-                }`}
+                key={i}
+                className="rounded-2xl border border-white/10 bg-white/[0.03] p-5 hover:bg-white/[0.05] transition"
               >
-                {s.up ? <FiArrowUpRight /> : <FiArrowDownRight />}
-                {s.delta}
+                <div className="text-sm text-white/70">{s.label}</div>
+                <div className="mt-1 flex items-center justify-between">
+                  <div className="text-2xl font-bold">{s.value}</div>
+                  <div className="text-yellow-400">{s.icon}</div>
+                </div>
+                {s.delta && (
+                  <div
+                    className={`mt-1 inline-flex items-center gap-1 text-sm ${
+                      s.up ? "text-emerald-400" : "text-rose-400"
+                    }`}
+                  >
+                    {s.up ? <FiArrowUpRight /> : <FiArrowDownRight />}
+                    {s.delta}
+                  </div>
+                )}
               </div>
-            )}
-          </div>
-        ))}
+            ))}
       </section>
 
       {/* Main Dashboard Columns */}
@@ -180,30 +278,45 @@ export default function DashboardHome() {
                 </tr>
               </thead>
               <tbody>
-                {recentBiddings.map((row, i) => (
-                  <tr
-                    key={i}
-                    className="border-t border-white/10 hover:bg-white/[0.04] transition"
-                  >
-                    <td className="px-6 py-3">{row.name}</td>
-                    <td className="px-6 py-3">{row.tickets}</td>
-                    <td className="px-6 py-3">{row.amount}</td>
-                    <td className="px-6 py-3">{row.date}</td>
-                    <td className="px-6 py-3">
-                      <span
-                        className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${
-                          row.status === "Confirmed"
-                            ? "bg-emerald-500/15 text-emerald-300"
-                            : row.status === "Failed"
-                            ? "bg-rose-500/15 text-rose-300"
-                            : "bg-yellow-500/15 text-yellow-300"
-                        }`}
-                      >
-                        {row.status}
-                      </span>
+                {loading ? (
+                  // show 4 skeleton rows while loading
+                  [0, 1, 2, 3].map((i) => <RowSkeleton key={i} />)
+                ) : recentBiddings.length > 0 ? (
+                  recentBiddings.map((row, i) => (
+                    <tr
+                      key={i}
+                      className="border-t border-white/10 hover:bg-white/[0.04] transition"
+                    >
+                      <td className="px-6 py-3">{row.name}</td>
+                      <td className="px-6 py-3">{row.tickets}</td>
+                      <td className="px-6 py-3">{row.amount}</td>
+                      <td className="px-6 py-3">{row.date}</td>
+                      <td className="px-6 py-3">
+                        <span
+                          className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${
+                            row.status === "Confirmed"
+                              ? "bg-emerald-500/15 text-emerald-300"
+                              : row.status === "Failed"
+                              ? "bg-rose-500/15 text-rose-300"
+                              : "bg-yellow-500/15 text-yellow-300"
+                          }`}
+                        >
+                          {row.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  // empty state
+                  <tr className="border-t border-white/10">
+                    <td
+                      colSpan={5}
+                      className="px-6 py-6 text-center text-sm text-white/60"
+                    >
+                      No recent biddings.
                     </td>
                   </tr>
-                ))}
+                )}
               </tbody>
             </table>
           </div>
